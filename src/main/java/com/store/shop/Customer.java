@@ -79,7 +79,8 @@ public class Customer {
     }
 
     public void setCustomerId(int customerId) {
-        this.customerId = customerId;
+        this.customerId = this.id;
+        this.id=this.id+1;
     }
 
     public String getFirstName() {

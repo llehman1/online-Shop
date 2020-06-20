@@ -22,16 +22,17 @@ public class ShopController {
         this.orderList = new ArrayList<Order>();
         this.historyOrderList = new ArrayList<Order>();
         this.createItems();
+        this.creatCustomer();
     }
 
     @RequestMapping(method = RequestMethod.GET, value = "/versand")
-    public ResponseEntity<?> getLogistic(@RequestParam(value = "BestellNR") int id){
-        for (Order order: this.orderList){
-            if(order.getOrderId()==id){
-                return new ResponseEntity<Logistic>(order.getLogistic(),HttpStatus.OK);
+    public ResponseEntity<?> getLogistic(@RequestParam(value = "BestellNr") int id) {
+        for (Order order : this.orderList) {
+            if (order.getOrderId() == id) {
+                return new ResponseEntity<Logistic>(order.getLogistic(), HttpStatus.OK);
             }
         }
-        return new ResponseEntity<String>("BestellNr konnte keiner Bestellung zugeordnet werden",HttpStatus.NOT_FOUND);
+        return new ResponseEntity<String>("BestellNr konnte keiner Bestellung zugeordnet werden", HttpStatus.NOT_FOUND);
     }
 
 
@@ -67,26 +68,30 @@ public class ShopController {
         return new ResponseEntity<OrderRequest>(orderRequest, HttpStatus.OK);
     }
 
-    @RequestMapping(method = RequestMethod.POST, value = "/OrderRequest")
+    @RequestMapping(method = RequestMethod.POST, value = "/orderRequest")
     public ResponseEntity<?> getOrderRequest(@RequestBody OrderRequest orderRequest) {
         Order order = null;
         for (Customer customer : this.customerList) {
             if (customer.getCustomerId() == orderRequest.getCustomerID()) {
                 for (ItemRequest itemrequest : orderRequest.getItemList()) {
                     for (Item item : this.itemList) {
-                        if (item.getId() == itemrequest.getItemID() && item.getProductName() == itemrequest.getName() && item.getCount() - itemrequest.getCount() >= 0) {
-                            order = new Order(customer, orderRequest.getPaymentMethod());
+                        if (item.getId() == itemrequest.getItemID() &&  item.getCount() - itemrequest.getCount() >= 0) {
+                            if(order==null){
+                                order = new Order(customer, orderRequest.getPaymentMethod());
+                            }
                             order.addItem(new ItemOrder(item, itemrequest.getCount()));
+                            break;
                         }
                     }
                 }
+                break;
             }
         }
         if (order != null) {
             for (Order oldOrder : order.getCustomer().getHistoryOrder()) {
                 LocalDate nowDate = LocalDate.now().minusWeeks(4);
-                if (oldOrder.getPaymentMethod() == PayState.RECHNUNG && oldOrder.getPay() == false && nowDate.isBefore(oldOrder.getDate())) {
-                    return new ResponseEntity<String>("BestellungNR: " + oldOrder.getOrderId() + "muss noch bezahlt werden. Sollange kann keine weiter bestellung getätigt werden", HttpStatus.NOT_ACCEPTABLE);
+                if (oldOrder.getPaymentMethod() == PayState.RECHNUNG && oldOrder.getPay() == false && nowDate.isAfter(oldOrder.getDate())) {
+                    return new ResponseEntity<String>("BestellungNR: " + oldOrder.getOrderId() + " muss noch bezahlt werden. Sollange kann keine weiter bestellung getätigt werden", HttpStatus.NOT_ACCEPTABLE);
                 }
             }
             if (order.getItemOrders().size() == orderRequest.getItemList().size()) {
@@ -101,6 +106,15 @@ public class ShopController {
         return new ResponseEntity<String>("Fehler im Bestellprozess", HttpStatus.NOT_FOUND);
     }
 
+    @RequestMapping(method = RequestMethod.GET, value = "/orderRequestdummi")
+    public ResponseEntity<?> getOrderRequest() {
+        OrderRequest orderRequest = new OrderRequest(0, PayState.RECHNUNG);
+        orderRequest.addItemList(new ItemRequest(0, "Trainer", "Dunlop", 3));
+        orderRequest.addItemList(new ItemRequest(1, "Radical", "Head", 2));
+        return new ResponseEntity<OrderRequest>(orderRequest, HttpStatus.NOT_FOUND);
+    }
+
+
     @RequestMapping(method = RequestMethod.POST, value = "/login")
     public ResponseEntity<?> getLogin(@RequestBody Login login) {
         for (Customer customer : this.customerList) {
@@ -111,14 +125,42 @@ public class ShopController {
         return new ResponseEntity<String>("E-Mail oder Passwort falsch", HttpStatus.NOT_FOUND);
     }
 
+    @RequestMapping(method = RequestMethod.GET, value = "/logindummi")
+    public ResponseEntity<Login> getLogin() {
+        return new ResponseEntity<Login>(new Login("test@test.de", "ABC"), HttpStatus.OK);
+    }
+
+    @RequestMapping(method = RequestMethod.POST, value = "/registrierung")
+    public ResponseEntity<?> createCustomer(@RequestBody Regist regist) {
+        for (Customer customer : this.customerList) {
+            if (regist.getCustomer().getEmail().equals(customer.getEmail())) {
+                return new ResponseEntity<String>("E-Mail existiert bereits", HttpStatus.NOT_FOUND);
+            }
+        }
+        regist.getCustomer().setPwdhash(regist.getPwdhash());
+        this.customerList.add(regist.getCustomer());
+        return new ResponseEntity<Customer>(regist.getCustomer(), HttpStatus.OK);
+    }
+
+
+    @RequestMapping(method = RequestMethod.GET, value = "/registrierungdummi")
+    public ResponseEntity<Regist> createCustomerdumi() {
+        return new ResponseEntity<Regist>(new Regist("ABC", this.customerList.get(0)), HttpStatus.OK);
+    }
+
     private void createItems() {
-        this.itemList.add(new Item(10, "Trainer", "a nice Tennis Ball", "http://www.google.com/abc", 2, 30, "Dunlop"));
-        this.itemList.add(new Item(219.90, "Radical", "best Head racket", "http://www.google.com/head", 0.32, 2, "Head"));
+        this.itemList.add(new Item(10, "Trainer", "a nice Tennis Ball", "http://www.google.com/abc", 2, 300, "Dunlop"));
+        this.itemList.add(new Item(219.90, "Radical", "best Head racket", "http://www.google.com/head", 0.32, 200, "Head"));
         this.itemList.add(new Item(13, "ATP", "ATP Tennis ", "http://www.google.com/test", 0.3, 0, "Dunlop"));
-        this.itemList.add(new Item(195.90, "Radical MP", "best racket in the world", "http://www.google.com/head", 0.31, 4, "Head"));
+        this.itemList.add(new Item(195.90, "Radical MP", "best racket in the world", "http://www.google.com/head", 0.31, 100, "Head"));
     }
 
-    private void createCustomer() {
-
+    private void creatCustomer() {
+        this.customerList.add(new Customer(77963, "Garten-Staße", "22", "Helga", "Müller", "helga@gmail.com", "ABC", "Nonnenweier"));
+        this.customerList.add(new Customer(77963, "Vogesen-Straße", "5", "Erwin", "Meier", "meier@gmx.com", "DEF", "Ottenheim"));
+        this.customerList.add(new Customer(77633, "Franken-Straße", "16", "Nadine", "Fischer", "nadine.fischer@web.com", "GHI", "Lahr"));
+        this.customerList.add(new Customer(77633, "Süd-Straße", "16", "Nicole", "Fehrenbach", "kleine.Maus@t-online.fr", "JKL", "Schutterwald"));
     }
+
+
 }

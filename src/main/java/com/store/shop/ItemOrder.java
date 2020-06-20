@@ -9,7 +9,7 @@ public class ItemOrder {
         this.count = count;
     }
     public double getTotalWeight(){
-        return this.item.getWeight()+this.count;
+        return this.item.getWeight()*this.count;
     }
 
     public Item getItem() {
@@ -29,6 +29,6 @@ public class ItemOrder {
     }
 
     public double getTotalPrice() {
-        return this.item.getPrice()+this.count;
+        return this.item.getPrice()*this.count;
     }
 }
